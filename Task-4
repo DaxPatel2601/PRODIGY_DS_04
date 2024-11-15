@@ -1,0 +1,55 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import nltk
+from wordcloud import WordCloud
+
+data = pd.read_csv(r'twitter_training.csv')  
+
+data.head()
+data.info()
+print(data.columns)
+print(data.isnull().sum())
+
+data = data.rename(columns={'Positive': 'sentiment'})
+
+print(data['sentiment'].unique())
+
+data = data.rename(columns={'im getting on borderlands and i will murder you all ,':'text'})
+data['cleaned_text'] = data['text'].str.lower().str.replace('[^a-z\s]', '', regex=True)
+
+print(data[['text','cleaned_text','sentiment']].head())
+
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+stop_words = set(stopwords.words('english'))
+
+sns.countplot(x='sentiment', data=data, palette='viridis')
+plt.title('Sentiment Distribution')
+plt.show()
+
+positive_text = ' '.join(data[data['sentiment'] == 'positive']['cleaned_text'])
+wordcloud = WordCloud(width=800, height=400, background_color='white').generate(positive_text)
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.title('Word Cloud for Positive Sentiment')
+plt.show()
+
+from collections import Counter
+
+positive_words = ' '.join(data[data['sentiment'] == 'positive']['cleaned_text']).split()
+positive_word_counts = Counter(positive_words)
+positive_word_df = pd.DataFrame(positive_word_counts.most_common(20), columns=['word', 'count'])
+
+sns.barplot(x='count', y='word', data=positive_word_df, palette='viridis')
+plt.title('Top 20 Words in Positive Sentiment')
+plt.show()
+
+data['timestamp'] = pd.to_datetime(data['timestamp'])
+
+data.set_index('timestamp').groupby(['sentiment']).resample('M').size().unstack(0).plot(kind='line', figsize=(12, 6))
+plt.title('Sentiment Trends Over Time')
+plt.ylabel('Number of Tweets')
+plt.xlabel('Time')
+plt.show()
